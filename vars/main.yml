@@ -1,0 +1,6 @@
+---
+# vars file for nginx
+nginx_services:
+  - http
+  - https
+_selinux_utils: "{{ 'policycoreutils' if ansible_distribution_major_version == '7' else 'policycoreutils-python-utils' }}"

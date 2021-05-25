@@ -1,0 +1,55 @@
+---
+# tasks file for nginx
+- name: Installing NGINX
+  become: yes
+  block:
+  - name: Add NGINX official repo
+    yum_repository:
+      name: nginx
+      description: NGINX official repo
+      file: nginx
+      baseurl: https://nginx.org/packages/centos/$releasever/$basearch/
+      repo_gpgcheck: yes
+      gpgcheck: yes
+      gpgkey: https://nginx.org/keys/nginx_signing.key
+      sslverify: yes
+      sslcacert: /etc/pki/tls/certs/ca-bundle.crt
+      metadata_expire: "300"
+      enabled: yes
+  - name: Installing pakages
+    package:
+      name:
+       - nginx
+       - "{{ _selinux_utils }}"
+      state: latest
+    notify: nginx_restart
+  - name: setup selinux to allow nginx to connect to network to act as a reverse proxy
+    seboolean:
+      name: httpd_can_network_connect
+      state: yes
+      persistent: yes
+  - name: firewalld enable and start
+    service:
+      enabled: true
+      name: firewalld
+      state: started
+  - name: adding http and https firewalld exceptions
+    firewalld:
+      service: "{{ item }}"
+      permanent: yes
+      state: enabled
+      immediate: yes
+    with_items: "{{ nginx_services }}"
+  - name: Creating vhosts.d directory
+    file:
+      path: /etc/nginx/vhosts.d
+      state: directory
+      mode: 0775
+      owner: root
+      group: root
+  - name: add vhosts.d inclusion
+    lineinfile:
+      dest: /etc/nginx/nginx.conf
+      insertafter: 'include /etc/nginx/conf.d'
+      line: "    include /etc/nginx/vhosts.d/*.conf;"
+  tags: always
